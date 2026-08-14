@@ -1,0 +1,43 @@
+{
+  "id": "maria-cordeirinho",
+  "title": "Maria e o Cordeirinho",
+  "artist": "Tradicional (domínio público)",
+  "difficulty": "Fácil",
+  "credits": "Melodia: 'Mary Had a Little Lamb' (domínio público). Letra e divisão de sílabas aproximadas.",
+  "audioResource": "",
+  "order": 5,
+  "bpm": 100,
+  "gap": 1.5,
+  "notes": [
+    { "beat": 0,  "length": 0.9, "midi": 64, "text": "Ma",            "line": 0 },
+    { "beat": 1,  "length": 0.9, "midi": 62, "text": "ri",            "line": 0 },
+    { "beat": 2,  "length": 0.9, "midi": 60, "text": "a ",            "line": 0 },
+    { "beat": 3,  "length": 0.9, "midi": 62, "text": "ti",            "line": 0 },
+    { "beat": 4,  "length": 0.9, "midi": 64, "text": "nha ",          "line": 0 },
+    { "beat": 5,  "length": 0.9, "midi": 64, "text": "um ",           "line": 0 },
+    { "beat": 6,  "length": 1.9, "midi": 64, "text": "cordeirinho,",  "line": 0 },
+
+    { "beat": 8,  "length": 0.9, "midi": 62, "text": "bran",          "line": 1 },
+    { "beat": 9,  "length": 0.9, "midi": 62, "text": "co ",           "line": 1 },
+    { "beat": 10, "length": 1.9, "midi": 62, "text": "como a neve,",  "line": 1 },
+
+    { "beat": 12, "length": 0.9, "midi": 64, "text": "bran",          "line": 2 },
+    { "beat": 13, "length": 0.9, "midi": 67, "text": "co ",           "line": 2 },
+    { "beat": 14, "length": 1.9, "midi": 67, "text": "como a neve.",  "line": 2 },
+
+    { "beat": 16, "length": 0.9, "midi": 64, "text": "Ma",            "line": 3 },
+    { "beat": 17, "length": 0.9, "midi": 62, "text": "ri",            "line": 3 },
+    { "beat": 18, "length": 0.9, "midi": 60, "text": "a ",            "line": 3 },
+    { "beat": 19, "length": 0.9, "midi": 62, "text": "ti",            "line": 3 },
+    { "beat": 20, "length": 0.9, "midi": 64, "text": "nha ",          "line": 3 },
+    { "beat": 21, "length": 0.9, "midi": 64, "text": "um ",           "line": 3 },
+    { "beat": 22, "length": 0.9, "midi": 64, "text": "cor",           "line": 3 },
+    { "beat": 23, "length": 0.9, "midi": 64, "text": "deirinho,",     "line": 3 },
+
+    { "beat": 24, "length": 0.9, "midi": 62, "text": "por ",          "line": 4 },
+    { "beat": 25, "length": 0.9, "midi": 62, "text": "on",            "line": 4 },
+    { "beat": 26, "length": 0.9, "midi": 64, "text": "de ela ",       "line": 4 },
+    { "beat": 27, "length": 0.9, "midi": 62, "text": "ia, ",          "line": 4 },
+    { "beat": 28, "length": 3.9, "midi": 60, "text": "ele ia também.", "line": 4 }
+  ]
+}

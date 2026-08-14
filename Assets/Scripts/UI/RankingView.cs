@@ -31,6 +31,13 @@ namespace Karaoke.UI
 
         float rowSpacing;
 
+        /// <summary>
+        /// Cor da posicao nas linhas clonadas. A RankRow0 fica como voce montou
+        /// — o 1o lugar tem destaque proprio na arte — e so as copias recebem
+        /// esta cor.
+        /// </summary>
+        static readonly Color ClonedPositionColor = new Color32(0x23, 0x71, 0x2E, 0xFF);
+
         public RankingView(Transform forroList, Transform piseiroList, Transform sertanejoList,
                            int rowsPerColumn, float rowSpacing)
         {
@@ -74,13 +81,16 @@ namespace Karaoke.UI
                 if (rowTransform == null) continue;
 
                 var binder = new SceneBinder(rowTransform);
-                into.Add(new Row
+                var row = new Row
                 {
                     go = rowTransform.gameObject,
                     pos = binder.Optional<TMP_Text>(SceneNames.RowPosText),
                     nome = binder.Optional<TMP_Text>(SceneNames.RowNameText),
                     pontos = binder.Optional<TMP_Text>(SceneNames.RowPointsText)
-                });
+                };
+
+                if (i > 0 && row.pos != null) row.pos.color = ClonedPositionColor;
+                into.Add(row);
             }
         }
 

@@ -36,7 +36,7 @@ namespace Karaoke.EditorTools
             Transform select = Screen(root, SceneNames.MusicSelect, missing);
             Transform game = Screen(root, SceneNames.Game, missing);
             Transform end = Screen(root, SceneNames.EndGame, missing);
-            Transform rank = Screen(root, SceneNames.Ranking, missing);
+            Transform obrigado = Screen(root, SceneNames.ThankYou, missing);
 
             Need<Button>(menu, SceneNames.MenuAdvanceButton, missing);
             Need<Button>(select, SceneNames.ConfirmButton, missing);
@@ -71,9 +71,15 @@ namespace Karaoke.EditorTools
             Need<TMP_InputField>(end, SceneNames.NameInput, missing);
             Need<Button>(end, SceneNames.RegisterButton, missing);
 
-            CheckRankingColumn(rank, SceneNames.RankingForroList, missing, notes);
-            CheckRankingColumn(rank, SceneNames.RankingPiseiroList, missing, notes);
-            CheckRankingColumn(rank, SceneNames.RankingSertanejoList, missing, notes);
+            if (obrigado != null) notes.Add(SceneNames.ThankYou + ": qualquer tecla nesta tela reinicia o jogo.");
+
+            // Ranking fora do fluxo — as tres colunas deixaram de ser exigidas.
+            // Voltando a tela, e so descomentar aqui e em KaraokeApp.BindScene.
+            //
+            // Transform rank = Screen(root, SceneNames.Ranking, missing);
+            // CheckRankingColumn(rank, SceneNames.RankingForroList, missing, notes);
+            // CheckRankingColumn(rank, SceneNames.RankingPiseiroList, missing, notes);
+            // CheckRankingColumn(rank, SceneNames.RankingSertanejoList, missing, notes);
 
             var sb = new StringBuilder();
             sb.AppendLine("[Karaoke] Conferencia da cena");

@@ -19,13 +19,20 @@ namespace Karaoke.App
         MusicSelect,
         Game,
         EndGame,
+        Obrigado,
+        /// <summary>Fora do fluxo por ora; ver o bloco de ranking comentado abaixo.</summary>
         Ranking
     }
 
     /// <summary>
     /// Controlador do fluxo das cinco telas.
     ///
-    ///   Menu -> Selecao de musica -> Jogo -> Resultado (+ modal) -> Ranking
+    ///   Menu -> Selecao de musica -> Jogo -> Resultado (+ modal) -> Obrigado
+    ///
+    /// O ranking na tela saiu do fluxo: depois de cadastrar o nome vai para a
+    /// tela "Obrigado". O placar continua sendo enviado ao servidor; so a
+    /// exibicao do Top 10 e que foi desligada, e o codigo dela esta comentado
+    /// logo abaixo de SubmitRoutine, pronto para voltar.
     ///
     /// Nao cria interface: liga-se aos objetos que ja existem no Canvas pelo
     /// NOME (busca recursiva), entao mover ou reagrupar objetos no editor nao
@@ -61,16 +68,16 @@ namespace Karaoke.App
         [Range(-1f, 1f)] public float ajusteDaLetra = 0f;
 
         [Header("Ranking")]
-        [Tooltip("Distancia vertical entre as linhas clonadas do ranking. Ignorado se a lista tiver Layout Group.")]
+        [Tooltip("So volta a valer se a tela de ranking voltar ao fluxo. Distancia vertical entre as linhas clonadas.")]
         public float espacamentoLinhaRanking = 120f;
 
         public GameScreen Current { get; private set; }
 
         // ------------------------------------------------------------ cena
         Transform canvasRoot;
-        GameObject menuScreen, musicSelectScreen, gameScreen, endGameScreen, rankingScreen;
+        GameObject menuScreen, musicSelectScreen, gameScreen, endGameScreen, thankYouScreen;
 
-        Button menuAdvanceButton, confirmButton, endRankingButton, endSkipButton, registerButton, rankingSkipButton;
+        Button menuAdvanceButton, confirmButton, endRankingButton, endSkipButton, registerButton;
         GameObject registerModal;
         TMP_InputField nameInput;
         Image scoreImage;
@@ -79,7 +86,7 @@ namespace Karaoke.App
 
         readonly List<SongButtonBinding> songButtons = new List<SongButtonBinding>();
         LyricsView lyrics;
-        RankingView ranking;
+        // RankingView ranking;      // ranking fora do fluxo
         bool sceneReady;
 
         // ----------------------------------------------------------- estado
@@ -96,6 +103,7 @@ namespace Karaoke.App
         PitchLabScreen pitchLab;
         bool diagnostico;
         float diagnosticoTimer;
+        readonly LatencySweep sweep = new LatencySweep();
 
         // =================================================================
 
@@ -109,6 +117,7 @@ namespace Karaoke.App
             audioSource.loop = false;
             audioSource.spatialBlend = 0f;
 
+            settings.ApplyDifficulty();
             mic = new MicrophoneCapture();
             tracker = new PitchTracker(mic, settings);
             songs = SongLibrary.LoadAll();
@@ -157,14 +166,24 @@ namespace Karaoke.App
             Transform select = root.Require(SceneNames.MusicSelect);
             Transform game = root.Require(SceneNames.Game);
             Transform end = root.Require(SceneNames.EndGame);
-            Transform rank = root.Require(SceneNames.Ranking);
+            Transform obrigado = root.Optional(SceneNames.ThankYou);
             if (!root.Report("Telas principais")) return false;
 
             menuScreen = menu.gameObject;
             musicSelectScreen = select.gameObject;
             gameScreen = game.gameObject;
             endGameScreen = end.gameObject;
-            rankingScreen = rank.gameObject;
+            thankYouScreen = obrigado != null ? obrigado.gameObject : null;
+
+            if (thankYouScreen == null)
+                Debug.LogWarning("[Karaoke] Nao achei a tela \"" + SceneNames.ThankYou + "\" no Canvas. " +
+                                 "Sem ela, depois de cadastrar o nome o jogo volta direto para o inicio.");
+
+            // A tela de ranking continua na hierarquia, mas ninguem mais a
+            // liga nem desliga: se ficar ativa no editor, cobriria o jogo
+            // inteiro. Garantimos que ela nasce apagada.
+            Transform leftoverRanking = root.Optional(SceneNames.Ranking);
+            if (leftoverRanking != null) leftoverRanking.gameObject.SetActive(false);
 
             // cada tela tem seu proprio binder: assim dois objetos com o mesmo
             // nome em telas diferentes (ButtonSkip) nao se confundem
@@ -202,16 +221,22 @@ namespace Karaoke.App
             registerButton = endBinder.Require<Button>(SceneNames.RegisterButton);
             endBinder.Report("Tela 4 (EndGame)");
 
-            var rankBinder = new SceneBinder(rank);
-            rankingSkipButton = rankBinder.Optional<Button>(SceneNames.SkipButton);
-            ranking = new RankingView(rankBinder.Optional(SceneNames.RankingForroList),
-                                      rankBinder.Optional(SceneNames.RankingPiseiroList),
-                                      rankBinder.Optional(SceneNames.RankingSertanejoList),
-                                      backend.rankingLimit,
-                                      espacamentoLinhaRanking);
-            if (ranking.IsEmpty)
-                Debug.LogWarning("[Karaoke] Tela 5 (Ranking) sem linhas: crie RankRow0..RankRow" +
-                                 (backend.rankingLimit - 1) + " dentro de cada lista, cada uma com PosText, NomeText e PontosText.");
+            // --- tela 5 (Ranking): fora do fluxo. Para voltar, descomente este
+            // bloco, declare de novo os campos rankingScreen/rankingSkipButton/
+            // ranking, e troque ShowThanks() por ShowRanking() em SubmitRoutine.
+            //
+            // Transform rank = root.Require(SceneNames.Ranking);
+            // rankingScreen = rank.gameObject;
+            // var rankBinder = new SceneBinder(rank);
+            // rankingSkipButton = rankBinder.Optional<Button>(SceneNames.SkipButton);
+            // ranking = new RankingView(rankBinder.Optional(SceneNames.RankingForroList),
+            //                           rankBinder.Optional(SceneNames.RankingPiseiroList),
+            //                           rankBinder.Optional(SceneNames.RankingSertanejoList),
+            //                           backend.rankingLimit,
+            //                           espacamentoLinhaRanking);
+            // if (ranking.IsEmpty)
+            //     Debug.LogWarning("[Karaoke] Tela 5 (Ranking) sem linhas: crie RankRow0..RankRow" +
+            //                      (backend.rankingLimit - 1) + " dentro de cada lista, cada uma com PosText, NomeText e PontosText.");
 
             return true;
         }
@@ -222,8 +247,8 @@ namespace Karaoke.App
             Click(confirmButton, StartSelectedSong);
             Click(endRankingButton, OpenRegisterModal);
             Click(endSkipButton, BackToStart);
-            Click(registerButton, SubmitAndShowRanking);
-            Click(rankingSkipButton, BackToStart);
+            Click(registerButton, SubmitScore);
+            // Click(rankingSkipButton, BackToStart);   // ranking fora do fluxo
 
             foreach (SongButtonBinding song in songButtons)
             {
@@ -250,7 +275,8 @@ namespace Karaoke.App
             if (musicSelectScreen != null) musicSelectScreen.SetActive(screen == GameScreen.MusicSelect);
             if (gameScreen != null) gameScreen.SetActive(screen == GameScreen.Game);
             if (endGameScreen != null) endGameScreen.SetActive(screen == GameScreen.EndGame);
-            if (rankingScreen != null) rankingScreen.SetActive(screen == GameScreen.Ranking);
+            if (thankYouScreen != null) thankYouScreen.SetActive(screen == GameScreen.Obrigado);
+            // if (rankingScreen != null) rankingScreen.SetActive(screen == GameScreen.Ranking);
 
             if (screen != GameScreen.Game)
             {
@@ -326,13 +352,17 @@ namespace Karaoke.App
             audioSource.clip = clip;
 
             tracker.Reset();
+            sweep.Clear();
             countdown = Mathf.Max(1, settings.readyCountdown);
             counting = true;
             playing = false;
 
             if (counterImage != null) counterImage.SetActive(true);
             UpdateHud();
-            lyrics.Tick(0f);
+
+            // A letra so entra quando a contagem sai: o numero fica em cima
+            // dela. Ela e preenchida no primeiro Tick, logo depois.
+            lyrics.SetVisible(false);
 
             if (!lyrics.HasSyllables)
                 Debug.LogWarning("[Karaoke] '" + selectedSong.Title + "' nao tem a lista de silabas: a letra nao vai acompanhar.");
@@ -350,6 +380,8 @@ namespace Karaoke.App
                     counting = false;
                     playing = true;
                     if (counterImage != null) counterImage.SetActive(false);
+                    lyrics.SetVisible(true);
+                    lyrics.Tick(0f);
                     if (audioSource.clip != null) audioSource.Play();
                 }
                 return;
@@ -365,6 +397,7 @@ namespace Karaoke.App
             }
 
             engine.Feed(songTime - settings.micLatencySeconds, dt, tracker.SmoothedMidi, tracker.Voiced);
+            sweep.Record(songTime, dt, tracker.SmoothedMidi, tracker.Voiced);
             if (engine.ActiveIndex >= 0) lastNoteIndex = engine.ActiveIndex;
 
             // A letra anda pelo tempo da musica, nao pela nota que esta
@@ -379,6 +412,7 @@ namespace Karaoke.App
                 playing = false;
                 engine.Finish();
                 audioSource.Stop();
+                Debug.Log(sweep.Report(selectedSong, settings));
                 ShowResult();
             }
         }
@@ -470,7 +504,7 @@ namespace Karaoke.App
             }
         }
 
-        void SubmitAndShowRanking()
+        void SubmitScore()
         {
             string nome = nameInput != null ? nameInput.text.Trim() : "";
             if (string.IsNullOrEmpty(nome))
@@ -490,25 +524,40 @@ namespace Karaoke.App
                                                    engine.FinalPoints, null);
 
             if (registerButton != null) registerButton.interactable = true;
-            ShowRanking();
+            ShowThanks();
+        }
+
+        // ------------------------------------------------- tela 6: obrigado
+
+        /// <summary>
+        /// Fim do fluxo: uma imagem de agradecimento. Qualquer tecla recomeca,
+        /// igual a tela de ranking fazia.
+        /// </summary>
+        void ShowThanks()
+        {
+            if (thankYouScreen == null) { BackToStart(); return; }
+            Show(GameScreen.Obrigado);
         }
 
         // --------------------------------------------------- tela 5: ranking
-
-        void ShowRanking()
-        {
-            Show(GameScreen.Ranking);
-            if (ranking != null) StartCoroutine(LoadRankingRoutine());
-        }
-
-        IEnumerator LoadRankingRoutine()
-        {
-            RankingBoard board = null;
-            yield return RankingClient.FetchRanking(backend, (result, error) => board = result);
-
-            if (board != null) ranking.Show(board);
-            else ranking.ShowUnavailable();
-        }
+        //
+        // Fora do fluxo. Para voltar: descomente, restaure o bloco de binding
+        // em BindScene e chame ShowRanking() no lugar de ShowThanks().
+        //
+        // void ShowRanking()
+        // {
+        //     Show(GameScreen.Ranking);
+        //     if (ranking != null) StartCoroutine(LoadRankingRoutine());
+        // }
+        //
+        // IEnumerator LoadRankingRoutine()
+        // {
+        //     RankingBoard board = null;
+        //     yield return RankingClient.FetchRanking(backend, (result, error) => board = result);
+        //
+        //     if (board != null) ranking.Show(board);
+        //     else ranking.ShowUnavailable();
+        // }
 
         // ------------------------------------------------------------ loop
 
@@ -540,7 +589,11 @@ namespace Karaoke.App
                 case GameScreen.MusicSelect:
                     for (int i = 0; i < songButtons.Count && i < 9; i++)
                         if (Input.GetKeyDown(KeyCode.Alpha1 + i)) SelectSong(songButtons[i]);
-                    if (selectedSong != null && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)))
+                    // Espaco confirma tambem: e a tecla que a mao acha primeiro
+                    // e nao ha campo de texto nesta tela para atrapalhar.
+                    if (selectedSong != null && (Input.GetKeyDown(KeyCode.Return) ||
+                                                 Input.GetKeyDown(KeyCode.KeypadEnter) ||
+                                                 Input.GetKeyDown(KeyCode.Space)))
                         StartSelectedSong();
                     break;
 
@@ -548,7 +601,7 @@ namespace Karaoke.App
                     bool modalOpen = registerModal != null && registerModal.activeSelf;
                     if (modalOpen)
                     {
-                        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) SubmitAndShowRanking();
+                        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) SubmitScore();
                     }
                     else
                     {
@@ -557,7 +610,7 @@ namespace Karaoke.App
                     }
                     break;
 
-                case GameScreen.Ranking:
+                case GameScreen.Obrigado:
                     if (AnyKey()) BackToStart();
                     break;
             }

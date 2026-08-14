@@ -14,6 +14,8 @@ namespace Karaoke.App
         public const string MusicSelect = "MusicSelect";
         public const string Game = "Game";
         public const string EndGame = "EndGame";
+        public const string ThankYou = "Obrigado";
+        /// <summary>Tela de ranking — fora do fluxo por ora, mas o nome fica aqui.</summary>
         public const string Ranking = "Ranking";
 
         // tela 1

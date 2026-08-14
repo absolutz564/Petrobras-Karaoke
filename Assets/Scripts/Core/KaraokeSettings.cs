@@ -9,6 +9,24 @@ namespace Karaoke.Core
         Yin = 1
     }
 
+    public enum Dificuldade
+    {
+        /// <summary>Para testar afinacao a serio. Exige a nota quase cheia e no tom.</summary>
+        Rigida = 0,
+        /// <summary>Meio termo: perdoa respiracao e um desvio de tom pequeno.</summary>
+        Equilibrada = 1,
+        /// <summary>Ativacao com publico: quem canta junto tira 4 ou 5 estrelas.</summary>
+        Festa = 2,
+        /// <summary>
+        /// Criancas e quem nunca cantou: um degrau mais facil que Festa. Cada
+        /// perfil de cantor sobe uma estrela, e mesmo bem desafinado se tira 2 —
+        /// mas ainda diferencia, entao continua valendo a pena cantar melhor.
+        /// </summary>
+        Infantil = 4,
+        /// <summary>Usa os valores digitados abaixo, sem sobrescrever.</summary>
+        Personalizada = 3
+    }
+
     /// <summary>
     /// Todos os parametros ajustaveis do jogo em um lugar. Exposto no Inspector
     /// pelo componente KaraokeApp (basta selecionar o GameObject "Karaoke").
@@ -16,6 +34,40 @@ namespace Karaoke.Core
     [Serializable]
     public class KaraokeSettings
     {
+        /// <summary>
+        /// Calibrado com cantores simulados (desvio de tom, cobertura da nota e
+        /// atraso de entrada) contra as 6 musicas. Em "Festa": quem canta bem
+        /// tira 5 estrelas, mediano 3, fraco 2, desafinado 1 — todas as faixas
+        /// acontecem, que e o que faz o jogo valer numa ativacao.
+        /// </summary>
+        [Header("Dificuldade")]
+        [Tooltip("Escolha o perfil; os numeros abaixo sao preenchidos por ele. Use Personalizada para mexer na mao.")]
+        public Dificuldade dificuldade = Dificuldade.Festa;
+
+        /// <summary>Aplica o perfil escolhido. Chamado no inicio do jogo.</summary>
+        public void ApplyDifficulty()
+        {
+            switch (dificuldade)
+            {
+                case Dificuldade.Rigida:
+                    perfectSemitones = 0.7f; maxSemitones = 2.5f;
+                    fullCreditCoverage = 0.90f; multiplierWeight = 0.25f; notesPerMultiplierStep = 8;
+                    break;
+                case Dificuldade.Equilibrada:
+                    perfectSemitones = 1.5f; maxSemitones = 4.0f;
+                    fullCreditCoverage = 0.75f; multiplierWeight = 0.10f; notesPerMultiplierStep = 6;
+                    break;
+                case Dificuldade.Festa:
+                    perfectSemitones = 2.5f; maxSemitones = 6.0f;
+                    fullCreditCoverage = 0.60f; multiplierWeight = 0.05f; notesPerMultiplierStep = 4;
+                    break;
+                case Dificuldade.Infantil:
+                    perfectSemitones = 3.0f; maxSemitones = 7.0f;
+                    fullCreditCoverage = 0.50f; multiplierWeight = 0f; notesPerMultiplierStep = 3;
+                    break;
+            }
+        }
+
         [Header("Deteccao de pitch")]
         public DetectorKind detector = DetectorKind.Autocorrelation;
 
@@ -48,8 +100,28 @@ namespace Karaoke.Core
         [Tooltip("Aceita a nota certa em qualquer oitava.")]
         public bool octaveAgnostic = true;
 
-        [Tooltip("Latencia do caminho microfone->analise. Desloca a comparacao no tempo. Ajuste ouvindo/vendo se o acerto 'atrasa'.")]
-        public float micLatencySeconds = 0.05f;
+        /// <summary>
+        /// Fracao da nota que basta cantar para ganhar credito total.
+        ///
+        /// Ninguem emite som na duracao inteira de uma nota: consoante,
+        /// respiracao e ataque comem uma parte. Exigir 100% fazia um cantor bom
+        /// tirar 0,76 de acuracia onde deveria tirar 1,0 — e, como isso quebra
+        /// a sequencia, o efeito no placar era muito maior do que parece.
+        /// </summary>
+        [Tooltip("Cantar esta fracao da nota ja vale credito total. 0.75 = 3/4 da nota basta.")]
+        [Range(0.4f, 1f)] public float fullCreditCoverage = 0.75f;
+
+        /// <summary>
+        /// Atraso entre cantar e o jogo enxergar o pitch: buffer do microfone,
+        /// janela de analise de 46 ms e o filtro de mediana somam bem mais que
+        /// os 50 ms que eu supunha antes. Errar isso faz um cantor afinado
+        /// perder metade da duracao de cada nota.
+        ///
+        /// O valor certo varia por equipamento — o jogo mede sozinho no fim de
+        /// cada musica e escreve a recomendacao no Console.
+        /// </summary>
+        [Tooltip("Atraso do caminho microfone->analise, em segundos. O Console recomenda o valor medido ao fim de cada musica.")]
+        [Range(0f, 0.4f)] public float micLatencySeconds = 0.15f;
 
         [Header("Multiplicador")]
         [Tooltip("Notas certas seguidas para subir um nivel do multiplicador.")]
@@ -68,11 +140,11 @@ namespace Karaoke.Core
         /// perfeita. Em 0.5 a punicao por quebra cai pela metade.
         /// </summary>
         [Tooltip("Peso do multiplicador nos pontos. 0 = so enfeite, 1 = punicao maxima por quebrar a sequencia.")]
-        [Range(0f, 1f)] public float multiplierWeight = 0.5f;
+        [Range(0f, 1f)] public float multiplierWeight = 0.25f;
 
         [Header("Contagem inicial da partida")]
         [Tooltip("Segundos de 'prepare-se' antes de a musica comecar.")]
-        public int readyCountdown = 3;
+        public int readyCountdown = 10;
 
         [Header("Audio guia")]
         [Tooltip("Sintetiza a melodia em senoides quando a musica nao tem audio proprio.")]

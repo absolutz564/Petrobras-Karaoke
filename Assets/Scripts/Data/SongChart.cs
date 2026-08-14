@@ -192,7 +192,32 @@ namespace Karaoke.Data
             if (chart.Notes.Count == 0) return null;
             chart.Notes.Sort((a, b) => a.StartTime.CompareTo(b.StartTime));
             chart.Recalculate();
+            chart.DeriveLyricsFromNotes();
             return chart;
+        }
+
+        /// <summary>
+        /// Formatos antigos (e os arquivos UltraStar) trazem a letra escrita na
+        /// propria nota, sem lista de silabas. Aqui a lista e montada a partir
+        /// delas, para essas musicas tambem terem letra na tela.
+        /// </summary>
+        public void DeriveLyricsFromNotes()
+        {
+            if (Syllables.Count > 0) return;
+
+            bool hasText = false;
+            foreach (SongNote note in Notes)
+                if (!string.IsNullOrEmpty(note.Text) && note.Text.Trim().Length > 0) { hasText = true; break; }
+            if (!hasText) return;
+
+            foreach (SongNote note in Notes)
+            {
+                if (string.IsNullOrEmpty(note.Text)) continue;
+                Syllables.Add(new LyricSyllable { StartTime = note.StartTime, Text = note.Text, Line = note.Line });
+            }
+
+            if (LyricLines.Count > 0) return;
+            for (int line = 0; line < LineCount; line++) LyricLines.Add(LineText(line).TrimEnd());
         }
 
         public void Recalculate()

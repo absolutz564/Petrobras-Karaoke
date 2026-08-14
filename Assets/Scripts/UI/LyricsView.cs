@@ -78,6 +78,21 @@ namespace Karaoke.UI
                 if (slot != null) slot.text = "";
         }
 
+        /// <summary>
+        /// Liga e desliga as quatro linhas de uma vez.
+        ///
+        /// Serve para a contagem regressiva: o numero fica no centro da tela,
+        /// em cima de onde a letra aparece. Desligamos o objeto inteiro, e nao
+        /// so o texto, porque a linha pode ter arte propria por tras.
+        /// </summary>
+        public void SetVisible(bool visible)
+        {
+            if (slots == null) return;
+            foreach (TMP_Text slot in slots)
+                if (slot != null && slot.gameObject.activeSelf != visible)
+                    slot.gameObject.SetActive(visible);
+        }
+
         /// <summary>Atualiza a letra para o instante da musica.</summary>
         public void Tick(float songTime)
         {

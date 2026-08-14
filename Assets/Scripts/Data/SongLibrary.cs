@@ -13,10 +13,28 @@ namespace Karaoke.Data
     {
         public const string ResourceFolder = "Songs";
 
-        public static List<SongChart> LoadAll()
+        /// <summary>Catalogo extra, so para o modo de teste — nao aparece no jogo de producao.</summary>
+        public const string TestFolder = "SongsTest";
+
+        public static List<SongChart> LoadAll() => LoadAll(ResourceFolder);
+
+        /// <summary>Carrega o catalogo de producao mais o de teste, sem repetir id.</summary>
+        public static List<SongChart> LoadAllIncludingTests()
+        {
+            List<SongChart> charts = LoadAll(ResourceFolder);
+            var ids = new HashSet<string>();
+            foreach (SongChart c in charts) ids.Add(c.Id);
+
+            foreach (SongChart c in LoadAll(TestFolder))
+                if (ids.Add(c.Id)) charts.Add(c);
+
+            return charts;
+        }
+
+        public static List<SongChart> LoadAll(string folder)
         {
             var charts = new List<SongChart>();
-            TextAsset[] assets = Resources.LoadAll<TextAsset>(ResourceFolder);
+            TextAsset[] assets = Resources.LoadAll<TextAsset>(folder);
 
             foreach (var asset in assets)
             {
@@ -39,7 +57,7 @@ namespace Karaoke.Data
             });
 
             if (charts.Count == 0)
-                Debug.LogWarning("[Karaoke] Nenhuma musica encontrada em Resources/" + ResourceFolder);
+                Debug.LogWarning("[Karaoke] Nenhuma musica encontrada em Resources/" + folder);
 
             return charts;
         }

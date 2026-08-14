@@ -209,7 +209,17 @@ namespace Karaoke.Scoring
                 OnPitch = false;
             }
 
-            ActiveAccuracy = Mathf.Clamp01(accumulatedAccuracySeconds / Mathf.Max(0.05f, note.Duration));
+            ActiveAccuracy = AccuracyOfNote(note);
+        }
+
+        /// <summary>
+        /// Acuracia da nota: quanto tempo afinado, dividido pela fracao da nota
+        /// que consideramos suficiente. Cantar 75% da nota ja vale 100%.
+        /// </summary>
+        float AccuracyOfNote(SongNote note)
+        {
+            float required = Mathf.Max(0.05f, note.Duration * Mathf.Clamp(settings.fullCreditCoverage, 0.4f, 1f));
+            return Mathf.Clamp01(accumulatedAccuracySeconds / required);
         }
 
         float FrameAccuracy(float absDelta)
@@ -223,7 +233,7 @@ namespace Karaoke.Scoring
         void FinalizeNote(int index)
         {
             SongNote note = Chart.Notes[index];
-            float accuracy = Mathf.Clamp01(accumulatedAccuracySeconds / Mathf.Max(0.05f, note.Duration));
+            float accuracy = AccuracyOfNote(note);
             float weight = Chart.SungDuration > 0f ? note.Duration / Chart.SungDuration : 0f;
 
             // o multiplicador que valia enquanto esta nota era cantada
