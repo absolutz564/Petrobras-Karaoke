@@ -107,6 +107,11 @@ namespace Karaoke.UI
             windowLabel = UIBuilder.NewText(Root, "WindowLabel", "", 22, Palette.TextDim, TextAnchor.MiddleCenter);
             UIBuilder.SetAnchors(windowLabel.rectTransform, new Vector2(0.34f, 0.145f), new Vector2(0.61f, 0.19f), Vector2.zero, Vector2.zero);
 
+            // Trocar de microfone sem recompilar: numa ativacao, a entrada certa
+            // pode nao ser a que o sistema escolheu, e nao da para depurar la.
+            UIBuilder.NewButton(Root, "SwitchMic", "Trocar microfone", Palette.Accent, 26, CycleMicrophone)
+                .GetComponent<RectTransform>().Apply(new Vector2(0.63f, 0.145f), new Vector2(0.95f, 0.19f));
+
             UIBuilder.NewButton(Root, "SwitchDetector", "Trocar algoritmo", Palette.PanelSoft, 26, CycleDetector)
                 .GetComponent<RectTransform>().Apply(new Vector2(0.05f, 0.07f), new Vector2(0.32f, 0.14f));
 
@@ -135,6 +140,26 @@ namespace Karaoke.UI
             Image fill = UIBuilder.NewImage(bg, label + "Fill", Palette.Good);
             UIBuilder.SetAnchors(fill.rectTransform, Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero);
             return fill;
+        }
+
+        /// <summary>Passa para o proximo microfone da lista do sistema e reinicia a captura.</summary>
+        void CycleMicrophone()
+        {
+            string[] devices = MicrophoneCapture.Devices;
+            if (tracker.Mic == null || devices == null || devices.Length == 0)
+            {
+                Debug.LogWarning("[Karaoke] Nenhum microfone para trocar." + MicrophoneCapture.DescribeDevices());
+                return;
+            }
+
+            int next = (System.Array.IndexOf(devices, tracker.Mic.Device) + 1) % devices.Length;
+            if (tracker.Mic.Start(devices[next]))
+            {
+                tracker.Reset();
+                Debug.Log("[Karaoke] Microfone agora: [" + next + "] " + devices[next] +
+                          " @ " + tracker.Mic.SampleRate + " Hz");
+            }
+            else Debug.LogWarning("[Karaoke] Nao consegui abrir '" + devices[next] + "': " + tracker.Mic.LastError);
         }
 
         void CycleDetector()
@@ -192,7 +217,7 @@ namespace Karaoke.UI
             }
 
             levelFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(r.rms * 8f), 1f);
-            levelFill.color = r.rms >= tracker.Settings.rmsThreshold ? Palette.Good : Palette.Bad;
+            levelFill.color = r.rms >= tracker.Gate ? Palette.Good : Palette.Bad;
             clarityFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(r.clarity), 1f);
             clarityFill.color = r.clarity >= tracker.Settings.clarityThreshold ? Palette.Good : Palette.Warn;
 
@@ -203,16 +228,24 @@ namespace Karaoke.UI
 
             int rate = tracker.SampleRate;
             float latencyMs = rate > 0 ? tracker.WindowSize / (float)rate * 1000f : 0f;
+            string[] devices = MicrophoneCapture.Devices;
+            int deviceIndex = tracker.Mic != null ? System.Array.IndexOf(devices, tracker.Mic.Device) : -1;
+
             infoText.text =
-                "microfone: " + (tracker.Mic != null && tracker.Mic.IsRecording ? tracker.Mic.Device : "inativo") + "\n" +
+                "microfone: " + (tracker.Mic != null && tracker.Mic.IsRecording ? tracker.Mic.Device : "INATIVO") +
+                (deviceIndex >= 0 ? "  [" + deviceIndex + " de " + devices.Length + "]" : "") + "\n" +
                 "taxa: " + rate + " Hz\n" +
                 "janela: " + tracker.WindowSize + " amostras (" + latencyMs.ToString("0") + " ms)\n" +
                 "decimacao: " + tracker.Settings.decimation + "x  ->  " + (rate / Mathf.Max(1, tracker.Settings.decimation)) + " Hz efetivos\n" +
                 "faixa: " + tracker.Settings.minHz.ToString("0") + " - " + tracker.Settings.maxHz.ToString("0") + " Hz\n" +
-                "gate de silencio (RMS): " + tracker.Settings.rmsThreshold.ToString("0.000") + "\n" +
-                "confianca minima: " + tracker.Settings.clarityThreshold.ToString("0.00") + "\n" +
-                "mediana: " + tracker.Settings.smoothingWindow + " frames\n\n" +
-                "Teste rapido: toque La 440 e confira se aparece La4 com poucos cents de desvio.";
+                "ganho: " + tracker.Settings.ganhoDoMicrofone.ToString("0.0") + "x\n" +
+                "volume agora (RMS): " + r.rms.ToString("0.0000") + "\n" +
+                "ruido de fundo: " + tracker.NoiseFloor.ToString("0.0000") + "\n" +
+                "gate em vigor: " + tracker.Gate.ToString("0.0000") +
+                (tracker.Settings.gateAutomatico ? "  (automatico, teto " + tracker.Settings.rmsThreshold.ToString("0.000") + ")" : "  (fixo)") + "\n" +
+                "confianca minima: " + tracker.Settings.clarityThreshold.ToString("0.00") + "\n\n" +
+                "Nao pega voz? Se a barra de volume nem se mexe ao falar, o\n" +
+                "microfone escolhido esta errado: use \"Trocar microfone\".";
         }
 
         /// <summary>140 barrinhas do grafico: so em runtime, para nao encher a cena salva.</summary>

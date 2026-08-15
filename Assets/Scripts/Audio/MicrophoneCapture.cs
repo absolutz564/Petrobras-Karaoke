@@ -30,6 +30,28 @@ namespace Karaoke.Audio
         public static string[] Devices => Microphone.devices;
         public static bool HasDevice => Microphone.devices != null && Microphone.devices.Length > 0;
 
+        /// <summary>
+        /// Lista todos os microfones que o sistema enxerga, com a faixa de taxa
+        /// de amostragem de cada um. E a primeira coisa a olhar quando "nao
+        /// pega voz": muitas vezes o jogo esta gravando de outra entrada
+        /// (webcam, mixagem estereo, placa de captura) e nao do microfone.
+        /// </summary>
+        public static string DescribeDevices()
+        {
+            string[] devices = Devices;
+            if (devices == null || devices.Length == 0) return "nenhum microfone encontrado";
+
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < devices.Length; i++)
+            {
+                int min, max;
+                Microphone.GetDeviceCaps(devices[i], out min, out max);
+                sb.Append("\n  [").Append(i).Append("] ").Append(devices[i])
+                  .Append("  (").Append(min == 0 && max == 0 ? "qualquer taxa" : min + " a " + max + " Hz").Append(')');
+            }
+            return sb.ToString();
+        }
+
         /// <summary>Inicia a captura. device null = dispositivo padrao do sistema.</summary>
         public bool Start(string device = null, int lengthSeconds = 1)
         {

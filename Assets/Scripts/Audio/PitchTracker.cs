@@ -25,9 +25,14 @@ namespace Karaoke.Audio
         public bool Voiced;
         /// <summary>RMS suavizado, bom para barras de volume.</summary>
         public float Level;
+        /// <summary>Gate de silencio em vigor agora — igual ao rmsThreshold quando o automatico esta desligado.</summary>
+        public float Gate => gate.Value;
+        /// <summary>Ruido de fundo medido da sala. Se estiver alto, o problema e a sala, nao o microfone.</summary>
+        public float NoiseFloor => gate.NoiseFloor;
         public int WindowSize { get; private set; }
         public int SampleRate => Mic != null ? Mic.SampleRate : 0;
 
+        SilenceGate gate;
         float[] window;
         readonly float[] median = new float[9];
         readonly float[] sortScratch = new float[9];
@@ -52,6 +57,7 @@ namespace Karaoke.Audio
             WindowSize = Mathf.Clamp(Mathf.ClosestPowerOfTwo(Settings.windowSize), 256, 8192);
             window = new float[WindowSize];
             medianCount = 0;
+            gate = new SilenceGate(Settings.rmsThreshold);
         }
 
         public void ApplySettings()
@@ -91,6 +97,10 @@ namespace Karaoke.Audio
                 return;
             }
 
+            ApplyGain();
+            Detector.RmsThreshold = gate.Update(SilenceGate.Rms(window, window.Length),
+                                                Settings.rmsThreshold, Settings.gateAutomatico);
+
             Latest = Detector.Detect(window, Mic.SampleRate);
             Level = Mathf.Lerp(Level, Latest.rms, 0.35f);
 
@@ -109,6 +119,14 @@ namespace Karaoke.Audio
                 // "arrastar" a nota anterior para dentro da proxima frase
                 if (unvoicedTime > 0.2f) medianCount = 0;
             }
+        }
+
+        void ApplyGain()
+        {
+            float gain = Mathf.Max(1f, Settings.ganhoDoMicrofone);
+            if (gain <= 1f) return;
+            for (int i = 0; i < window.Length; i++)
+                window[i] = Mathf.Clamp(window[i] * gain, -1f, 1f);
         }
 
         void PushMedian(float midi)
@@ -144,6 +162,7 @@ namespace Karaoke.Audio
             medianCount = 0;
             Voiced = false;
             Level = 0f;
+            gate.Reset(Settings.rmsThreshold);
             Latest = default(PitchResult);
         }
     }

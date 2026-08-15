@@ -81,8 +81,24 @@ namespace Karaoke.Core
         public float minHz = 70f;
         public float maxHz = 1100f;
 
-        [Tooltip("Abaixo deste RMS o frame e tratado como silencio e ignorado na pontuacao.")]
+        [Tooltip("Abaixo deste RMS o frame e tratado como silencio e ignorado na pontuacao. Com o gate automatico ligado, este valor vira o TETO do gate.")]
         public float rmsThreshold = 0.012f;
+
+        /// <summary>
+        /// O gate fixo era o motivo de microfone fraco nao pontuar: um headset
+        /// encostado na boca passa de 0,012 de RMS com folga, mas o microfone
+        /// embutido do notebook, ou um microfone de mao com ganho baixo, fica
+        /// abaixo disso e a voz inteira era descartada como silencio.
+        ///
+        /// Ligado, o gate mede o ruido de fundo da sala e desce ate 4x acima
+        /// dele — nunca sobe acima do rmsThreshold, entao em sala barulhenta o
+        /// comportamento continua o de antes.
+        /// </summary>
+        [Tooltip("Abaixa o gate sozinho quando a sala esta silenciosa. Deixe ligado: microfone fraco nao passa no gate fixo.")]
+        public bool gateAutomatico = true;
+
+        [Tooltip("Multiplica o sinal do microfone antes da analise. Suba se o microfone for fraco (notebook, mic de mesa).")]
+        [Range(1f, 20f)] public float ganhoDoMicrofone = 1f;
 
         [Tooltip("Confianca minima do detector (0..1) para aceitar o pitch.")]
         [Range(0f, 1f)] public float clarityThreshold = 0.6f;

@@ -133,9 +133,12 @@ namespace Karaoke.App
             if (!Application.HasUserAuthorization(UserAuthorization.Microphone))
                 yield return Application.RequestUserAuthorization(UserAuthorization.Microphone);
 
+            Debug.Log("[Karaoke] Microfones vistos pelo sistema:" + MicrophoneCapture.DescribeDevices());
+
             if (MicrophoneCapture.HasDevice)
             {
-                if (mic.Start()) Debug.Log("[Karaoke] Microfone: " + mic.Device + " @ " + mic.SampleRate + " Hz");
+                if (mic.Start()) Debug.Log("[Karaoke] Gravando de: " + mic.Device + " @ " + mic.SampleRate +
+                                           " Hz. Se nao pontuar, abra o Pitch Lab (F1) e veja se a barra de volume se mexe.");
                 else Debug.LogWarning("[Karaoke] " + mic.LastError);
             }
             else
